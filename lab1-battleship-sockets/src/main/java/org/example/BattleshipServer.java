@@ -6,7 +6,6 @@ import javax.jws.WebService;
 import javax.xml.ws.Endpoint;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @WebService
@@ -16,6 +15,8 @@ public class BattleshipServer {
     static int numberOfPlayers = 0;
     static int lastMove = -1;
     static int lastPlayerMove = -1;
+
+
 
     public BattleshipServer() {
 
@@ -54,6 +55,14 @@ public class BattleshipServer {
     public int getLastPlayerMove(){
         return lastPlayerMove;
     }
+
+
+
+
+
+
+
+
 
     public static void main(String[] args) {
 

@@ -3,162 +3,329 @@ package org.example;
 import org.example.service.BattleshipServer;
 import org.example.service.BattleshipServerService;
 
+import javax.swing.*;
+import java.awt.*;
+import java.io.*;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.Scanner;
-
-
-
 
 public class Client {
 
-    static final int FIELD_SIZE = 10;
-    static char[][] firstPlayerTable = new char[FIELD_SIZE][FIELD_SIZE];
-    static char[][] secondPlayerTable = new char[FIELD_SIZE][FIELD_SIZE];
-
-    static char CF_ship ='H';
-    static char CF_water ='~';
-    static char CF_dmg ='X';
-    static char CF_miss ='O';
-    static char fieldCell;
-    static int numberOfPlayer = 0;
-
-    static int status = 0;
+    static int FieldSize = 10;
+    static char[][] myBoard = new char[FieldSize][FieldSize];
+    static char[][] enemyBoard = new char[FieldSize][FieldSize];
+    static int NumberPlayer = 0;
+    static int cur = 0;
     static Scanner scanner = new Scanner(System.in);
     static BattleshipServer game;
     static int last = -1;
 
     public static void main(String[] args) throws RemoteException, NotBoundException {
 
-
-
         BattleshipServerService battleshipServer = new BattleshipServerService();
         game = battleshipServer.getBattleshipServerPort();
 
-        numberOfPlayer = game.connectPlayer();
+        NumberPlayer = game.connectPlayer();
 
-        firstPlayerTable = BattleShipMaps.createTablesFirstPlayer();
-        secondPlayerTable = BattleShipMaps.createTablesSecondPlayer();;
-
-        int x,y;
-
-        PrintTables(firstPlayerTable, secondPlayerTable);
-
-        while(true) {
-
-            status = game.getCur();
-
-            int coordinates = game.getLastMove();
-
-            if (last != coordinates){
-                x = coordinates / 10-1;
-                y = coordinates % 10-1;
-
-                fieldCell = firstPlayerTable[x][y];
-                if (fieldCell != CF_dmg && fieldCell != CF_miss){
-
-                    if (fieldCell == CF_ship)
-                    {
-                        firstPlayerTable[x][y] = CF_dmg;
-                    } else{
-                        firstPlayerTable[x][y] = CF_miss;
-                    }
-                }
-            }
-
-
-            if (status == numberOfPlayer)
+        for (int i = 0; i < myBoard.length; i++)
+        {
+            for (int j = 0; j < enemyBoard.length; j++)
             {
-                PrintTables(firstPlayerTable, secondPlayerTable);
-                System.out.println("your turn");
-                List<String> input_coordinates = List.of(scanner.nextLine().split(" "));
-                coordinates = Integer.parseInt(input_coordinates.get(0))*10+Integer.parseInt(input_coordinates.get(1));
-                game.makeMove(coordinates, numberOfPlayer);
-                last = coordinates;
+                myBoard[i][j] = '.';
+                enemyBoard[i][j] = '.';
+            }
+        }
 
-                x = Integer.parseInt(input_coordinates.get(0))-1;
-                y = Integer.parseInt(input_coordinates.get(1))-1;
+        myBoard[0][0] = 'K';
+        myBoard[0][1] = 'K';
+        myBoard[5][5] = 'K';
+        myBoard[7][7] = 'K';
+        enemyBoard[0][0] = 'K';
+        enemyBoard[0][1] = 'K';
+        enemyBoard[6][6] = 'K';
+        enemyBoard[8][8] = 'K';
 
-                fieldCell = secondPlayerTable[x][y];
-                if (fieldCell != CF_dmg || fieldCell != CF_miss){
 
-                    if (fieldCell == CF_ship)
-                    {
-                        secondPlayerTable[x][y] = CF_dmg;
 
-                        boolean loose = true;
-                        for (int i = 0; i < FIELD_SIZE; i++){
-                            for (int k = 0; k < FIELD_SIZE; k++){
-                                if (secondPlayerTable[i][k] == CF_ship)
-                                    loose = false;
-                            }
-                        }
+//        Thread thread = new Thread(() -> {
 
-                        if (loose)
+            while(true) {
+
+                cur = game.getCur();
+
+                int lastMove = game.getLastMove();
+
+                if (last != lastMove){
+                    int x = lastMove / 10;
+                    int y = lastMove % 10;
+
+                    char sim = myBoard[x][y];
+                    if (sim != 'X' && sim != 'M'){
+
+                        if (sim == 'K')
                         {
-                            if (numberOfPlayer == 1){
-                                game.setCur(3);
-                            } else if (numberOfPlayer == 2) {
-                                game.setCur(4);
+                            myBoard[x][y] = 'X';
+                        } else if (sim == '.') {
+                            myBoard[x][y] = 'M';
+                        }
+                    }
+                }
+
+
+                if (cur == NumberPlayer)
+                {
+                    print(myBoard, enemyBoard);
+
+                    System.out.println("Ваш ход");
+                    System.out.println("Введите номер строки и колонки: ");
+                    int res = scanner.nextInt();
+
+                    game.makeMove(res, NumberPlayer);
+                    last = res;
+
+                    int x = res / 10;
+                    int y = res % 10;
+
+                    char sim = enemyBoard[x][y];
+                    if (sim != 'X' && sim != 'M'){
+
+                        if (sim == 'K')
+                        {
+                            enemyBoard[x][y] = 'X';
+
+                            boolean lost = true;
+                            for (int i = 0; i < enemyBoard.length - 1; i++){
+                                for (int k = 0; k < enemyBoard.length - 1; k++){
+                                    if (enemyBoard[i][k] == 'K') lost = false;
+                                }
+                            }
+
+                            if (lost)
+                            {
+                                if (NumberPlayer == 1){
+                                    game.setCur(3);
+                                } else if (NumberPlayer == 2) {
+                                    game.setCur(4);
+                                }
+                            }
+                        } else if (sim == '.') {
+                            enemyBoard[x][y] = 'M';
+                            if (NumberPlayer == 1){
+                                game.setCur(2);
+                            } else if (NumberPlayer == 2) {
+                                game.setCur(1);
                             }
                         }
-                    } else{
-                        secondPlayerTable[x][y] = CF_miss;
-                        if (numberOfPlayer == 1){
-                            game.setCur(2);
-                        } else if (numberOfPlayer == 2) {
-                            game.setCur(1);
-                        }
+
+
                     }
 
 
-                }
-                System.out.println("after move");
-                PrintTables(firstPlayerTable, secondPlayerTable);
-            } else if (status == 3 || status == 4) {
 
-                if (status == 3 && numberOfPlayer == 1 || status == 4 && numberOfPlayer == 2) {
-                    System.out.println("you win");
+
+                } else if (cur == 3) {
+
+                    if (NumberPlayer == 1){
+                        System.out.println("Ура, ты победил!!!");
+                    } else if (NumberPlayer == 2) {
+                        System.out.println("Иногда противникам больно везет... Вы проиграли");
+                    }
+
                     return;
-                }
-                if (status == 3 && numberOfPlayer == 2 || status == 4 && numberOfPlayer == 1) {
-                    System.out.println("you defeat");
+
+                } else if (cur == 4) {
+
+                    if (NumberPlayer == 2){
+                        System.out.println("Ура, ты победил!!!");
+                    } else if (NumberPlayer == 1) {
+                        System.out.println("Иногда противникам больно везет... Вы проиграли");
+                    }
+
                     return;
+
                 }
 
+
+//                try {
+//                    Thread.sleep(100);
+//                } catch (InterruptedException e) {
+//                    throw new RuntimeException(e);
+//                }
             }
+//        });
+//        thread.setDaemon(true);
+//        thread.start();
+    }
 
+
+    private static void fillPlayerField(char[][] playerField, ObjectOutputStream output)
+    {
+
+        PrintOnlyMine(playerField);
+        for (int i = 2; i >= 1; i--)
+        { //i = 4
+            for (int k = 3 - i; k != 0; k--)
+            { //k = 5-i
+                System.out.println("Расставляем " + i + "-палубный корабль. Осталось расставить: " + (k));
+
+                System.out.println("Введите номер строки: ");
+                int y = scanner.nextInt();
+
+                System.out.println("Введите номер столбца: ");
+                int x = scanner.nextInt();
+
+                int position = 0;
+                if (i != 1)
+                {
+                    System.out.println("1 - горизонтально; 2 - вертикально?");
+                    position = scanner.nextInt();
+                }
+                else {
+                    position = 1;
+                }
+
+                if (position == 1)
+                {
+                    for (int q = 0; q < i; q++)
+                    {
+                        playerField[y][x + q] = 'К';
+//                        makeMove(output, y, (x + q), true);
+                    }
+                }
+
+                if (position == 2)
+                {
+                    for (int m = 0; m < i; m++)
+                    {
+                        playerField[y + m][x] = 'К';
+//                        makeMove(output, (y + m), x, true);
+                    }
+                }
+                PrintOnlyMine(playerField);
+            }
         }
     }
 
-    public static void PrintTables(char[][] firtsPlayerTables, char[][] secondPlayerTables)
+    private static int getPort()
     {
-        char CF_ship ='H';
-        char CF_water ='~';
-        char CF_dmg ='X';
-        char CF_miss ='O';
+        return 8080;
+    }
 
+
+    public static void PrintOnlyMine(char[][] boardMine)
+    {
+        System.out.println("К - КОРАБЛЬ, X - ПОПАЛИ, М - МИМО");
+        int i = 0;
+        int k = 0;
         StringBuilder Upper = new StringBuilder();
+        Upper.append(" ").append('|').append(" ");
+        while (k < FieldSize){
+            Upper.append(k).append("  ");
+            k++;
+        }
         System.out.println(Upper);
 
-        for(int i=0;i<FIELD_SIZE;i++)
+        while (i < FieldSize) {
+            StringBuilder s = new StringBuilder();
+            s.append(i).append("|").append(" ");
+            {
+                int j = 0;
+                while (j < FieldSize) {
+                    s.append(boardMine[i][j]).append("  ");
+                    j++;
+                }
+            }
+            System.out.println(s);
+            i++;
+        }
+    }
+
+    public static void print(char[][] myBoard, char[][] enemyBoard)
+    {
+
+        System.out.println("К - КОРАБЛЬ, X - ПОПАЛИ, М - МИМО");
+
+        int k = 0;
+        StringBuilder Upper = new StringBuilder();
+        Upper.append(" ").append('|').append(" ");
+        while (k < FieldSize)
+        {
+            Upper.append(k).append("  ");
+            k++;
+        }
+        Upper.append("   ");
+        k = 0;
+        while (k < FieldSize)
+        {
+            Upper.append(k).append("  ");
+            k++;
+        }
+        System.out.println(Upper);
+
+        int i = 0;
+        while (i < FieldSize)
         {
             StringBuilder str = new StringBuilder();
+            str.append(i).append("|").append(" ");
             {
-                for(int j=0;j<FIELD_SIZE;j++)
-                    str.append(firtsPlayerTables[i][j]).append(" ");
+                int j = 0;
+                while (j < FieldSize)
+                {
+                    str.append(myBoard[i][j]).append("  ");
+                    j++;
+                }
             }
             str.append("   ");
-            for(int j=0;j<FIELD_SIZE;j++)
+            int j = 0;
+            while (j < FieldSize)
             {
-                if (secondPlayerTables[i][j] == CF_ship)
-                    str.append(CF_water).append(" ");
-                else
-                    str.append(secondPlayerTables[i][j]).append(" ");
+
+                if (enemyBoard[i][j] == 'K')
+                {
+                    str.append("K").append("  ");
+                }
+                else {
+                    str.append(enemyBoard[i][j]).append("  ");
+                }
+                j++;
+
             }
+            i++;
+//            System.out.println("Проверка");
             System.out.println(str);
         }
     }
+
+//    public static Data getData(ObjectInputStream in, Data data)
+//    {
+//        try
+//        {
+//            data = (Data) in.readObject();
+//        }
+//        catch (IOException | ClassNotFoundException ignored){}
+//
+//        if (NumberPlayer == 2)
+//        {
+//            enemyBoard = data.ffield;
+//            myBoard = data.sfield;
+//        } else if (NumberPlayer == 1)
+//        {
+//            enemyBoard = data.sfield;
+//            myBoard = data.ffield;
+//        }
+//        else
+//        {
+//            System.out.println("В getDate пришло не то");
+//        }
+//
+//        cur = data.cur;
+//
+//        return data;
+//    }
+
 }
